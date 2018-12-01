@@ -141,9 +141,7 @@ TRADE order1 1000 10 order3 900 10";
             solution.Process("MODIFY order1 BUY 1000 20"); // IOC cannot be modified
             var output = solution.Process("SELL GFD 900 20 order3");
 
-            var expectedOutput =
-@"TRADE order2 1000 10 order3 900 10
-TRADE order1 1000 10 order3 900 10";
+            var expectedOutput = @"TRADE order2 1000 10 order3 900 10";
             Assert.Equal(expectedOutput, output);
         }
 

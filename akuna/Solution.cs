@@ -34,7 +34,6 @@ namespace akuna
 
                             if (Validate(order))
                             {
-                                BuyOrSellOrder(command, order);
                                 result = Matching(command, order);
                             }
                         }
@@ -50,20 +49,22 @@ namespace akuna
                         if (inputAsArray.Length == 5)
                         {
                             var orderID = inputAsArray[1];
-                            Remove(orderID); // jk-todo: may be udpate and changen position?
-
-                            var newCommand = inputAsArray[2];
 
                             var foundOrder = FindOrder(orderID);
-
-                            var orderType = foundOrder.OrderType;
-                            var price = int.Parse(inputAsArray[3]);
-                            var quantity = int.Parse(inputAsArray[4]);
-                            var order = new Order(orderType, price, quantity, orderID);
-                            if (Validate(order))
+                            if (foundOrder != null)
                             {
-                                BuyOrSellOrder(newCommand, order);
-                                result = Matching(newCommand, order);
+                                Remove(orderID); // jk-todo: may be udpate and changen position?
+
+                                var newCommand = inputAsArray[2];
+
+                                var orderType = foundOrder.OrderType;
+                                var price = int.Parse(inputAsArray[3]);
+                                var quantity = int.Parse(inputAsArray[4]);
+                                var order = new Order(orderType, price, quantity, orderID);
+                                if (Validate(order))
+                                {
+                                    result = Matching(newCommand, order);
+                                }
                             }
                         }
                         break;
@@ -71,10 +72,10 @@ namespace akuna
                         var printResult = new List<string>();
 
                         printResult.Add("SELL:");
-                        foreach (var sellOrder in SellList.GroupBy(tempOrder => tempOrder.Price))
+                        foreach (var sellOrder in SellList.GroupBy(tempOrder => tempOrder.Price).OrderByDescending(order => order.Key))
                         {
                             var quantity = 0;
-                            foreach (var tempOrder in sellOrder)
+                            foreach (var tempOrder in sellOrder.OrderByDescending(order => order.Quantity))
                             {
                                 quantity += tempOrder.Quantity;
                             }
@@ -82,7 +83,7 @@ namespace akuna
                         }
 
                         printResult.Add("BUY:");
-                        foreach (var buyOrder in BuyList.GroupBy(tempOrder => tempOrder.Price))
+                        foreach (var buyOrder in BuyList.GroupBy(tempOrder => tempOrder.Price).OrderByDescending(order => order.Key))
                         {
                             var quantity = 0;
                             foreach (var tempOrder in buyOrder)
@@ -140,13 +141,28 @@ namespace akuna
                 var resultList = new List<string>();
                 foreach (var matchingOrder in matchingOrders)
                 {
-                    var matchedQuantity = matchingOrder.Quantity;
-                    resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
-                    matchingList.Remove(matchingOrder);
+                    var matchedQuantity = 0;
+                    var isAllQuantityFulfilled = order.Quantity >= matchingOrder.Quantity;
+
+                    if(isAllQuantityFulfilled)
+                    {
+                        matchedQuantity = matchingOrder.Quantity;
+                        resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
+                        matchingList.Remove(matchingOrder);
+                    }
+                    else
+                    {
+                        matchedQuantity = order.Quantity;
+                        resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
+                        matchingOrder.Quantity -= matchedQuantity;
+                        break;
+                    }
+                    order.Quantity -= matchedQuantity;
                 }
                 result = string.Join("\r\n", resultList);
             }
-            else
+
+            if (order.Quantity > 0)
             {
                 otherList.Add(order);
             }
@@ -156,26 +172,25 @@ namespace akuna
 
         IEnumerable<Order> FindMatchingOrders(IEnumerable<Order> sourceList, Order order, string command)
         {
-            var result = new List<Order>();
+            var results = new List<Order>();
 
             var quantityToFulfill = order.Quantity;
-            foreach (var source in sourceList)
+            foreach (var source in sourceList.OrderByDescending(sourceOrder => sourceOrder.Price))
             {
                 var isPriceMatched = IsPriceMatched(source, order, command);
-                if (source.Price >= order.Price)
+                if (isPriceMatched)
                 {
-                    if (quantityToFulfill >= source.Quantity)
+                    quantityToFulfill -= source.Quantity;
+                    results.Add(source);
+
+                    if (quantityToFulfill < 1)
                     {
-                        quantityToFulfill -= source.Quantity;
-                        result.Add(source);
+                        break;
                     }
                 }
             }
 
-            // should only match all
-            return quantityToFulfill > 0
-                ? Enumerable.Empty<Order>()
-                : result;
+            return results;
         }
 
         bool IsPriceMatched(Order source, Order order, string command)
@@ -265,22 +280,6 @@ namespace akuna
             if (foundOrder != null)
             {
                 SellList.Remove(foundOrder);
-            }
-        }
-
-        void BuyOrSellOrder(string command, Order order)
-        {
-            if (order.OrderType == GFD)
-            {
-                switch (command)
-                {
-                    case Buy:
-                        BuyList.Add(order);
-                        break;
-                    case Sell:
-                        BuyList.Add(order);
-                        break;
-                }
             }
         }
 
