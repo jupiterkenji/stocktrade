@@ -4,9 +4,9 @@ using System.Linq;
 
 namespace akuna
 {
-    public class Solution
+    public class Solution2
     {
-        public Solution()
+        public Solution2()
         {
             BuyList = new List<Order>();
             SellList = new List<Order>();
@@ -312,32 +312,27 @@ namespace akuna
         const string IOC = "IOC";
         const string GFD = "GFD";
 
-        #endregion
-    }
-
-    // interface IProcessor
-    // {
-    //     void Process(string input);
-    // }
-
-    class Order
-    {
-        public Order(string orderType, int price, int quantity, string orderID)
+        class Order
         {
-            OrderType = orderType;
-            Price = price;
-            Quantity = quantity;
-            OrderID = orderID;
+            public Order(string orderType, int price, int quantity, string orderID)
+            {
+                OrderType = orderType;
+                Price = price;
+                Quantity = quantity;
+                OrderID = orderID;
+            }
+
+            public string OrderType {get; set;}
+            public int Price {get; set;}
+            public int Quantity {get; set;}
+
+            public string OrderID {get;set;}
+
+            //jk-todo: sequence ... need linked list
         }
 
-        public string OrderType {get; set;}
-        public int Price {get; set;}
-        public int Quantity {get; set;}
+        enum OrderType {IOC, GFD};
 
-        public string OrderID {get;set;}
-
-        //jk-todo: sequence ... need linked list
+        #endregion
     }
-
-    enum OrderType {IOC, GFD};
 }

@@ -9,7 +9,7 @@ namespace akunatest
         [Fact]
         public void Example1Test()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             var output = solution.Process("PRINT");
@@ -24,7 +24,7 @@ BUY:
         [Fact]
         public void Example2Test()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("BUY GFD 1000 20 order2");
@@ -41,7 +41,7 @@ BUY:
         [Fact]
         public void Example3Test()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("BUY GFD 1001 20 order2");
@@ -58,7 +58,7 @@ BUY:
         [Fact]
         public void Example4Test()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
 
@@ -76,7 +76,7 @@ BUY:";
         [Fact]
         public void Example5Test()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("BUY GFD 1010 10 order2");
@@ -91,7 +91,7 @@ TRADE order1 1000 5 order3 1000 5";
         [Fact]
         public void TradeOrderTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("SELL GFD 900 10 order2");
             var output = solution.Process("BUY GFD 1000 10 order1");
@@ -103,7 +103,7 @@ TRADE order1 1000 5 order3 1000 5";
         [Fact]
         public void FairTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("BUY GFD 1000 10 order2");
@@ -118,7 +118,7 @@ TRADE order2 1000 10 order3 900 10";
         [Fact]
         public void ModifyTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("BUY GFD 1000 10 order2");
@@ -134,7 +134,7 @@ TRADE order1 1000 10 order3 900 10";
         [Fact]
         public void ModifyIOCTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY IOC 1000 10 order1");
             solution.Process("BUY GFD 1000 10 order2");
@@ -147,7 +147,7 @@ TRADE order1 1000 10 order3 900 10";
 
         public void NegativeTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD -1000 10 order1");
             var output = solution.Process("PRINT");
@@ -167,7 +167,7 @@ BUY:";
 
         public void CancelTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY GFD 1000 10 order1");
             solution.Process("CANCEL order1");
@@ -185,7 +185,7 @@ BUY:";
 
         public void BuyIOCTest()
         {
-            var solution = new Solution();
+            var solution = new Solution2();
 
             solution.Process("BUY IOC 1000 30 order1");
 
