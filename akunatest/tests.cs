@@ -76,7 +76,7 @@ BUY:";
         }
 
         [Fact]
-        public void Example5Test()
+        public void Example5Test_Selling()
         {
             var solution = new Solution2();
 
@@ -86,6 +86,21 @@ BUY:";
 
             var expectedOutput =
 @"TRADE order2 1010 10 order3 1000 10
+TRADE order1 1000 5 order3 1000 5";
+            Assert.Equal(expectedOutput, output);
+        }
+
+        [Fact]
+        public void Example5Test_Buying()
+        {
+            var solution = new Solution2();
+
+            solution.Process("SELL GFD 1000 10 order1");
+            solution.Process("SELL GFD 900 10 order2");
+            var output = solution.Process("BUY GFD 1000 15 order3");
+
+            var expectedOutput =
+@"TRADE order2 900 10 order3 1000 10
 TRADE order1 1000 5 order3 1000 5";
             Assert.Equal(expectedOutput, output);
         }

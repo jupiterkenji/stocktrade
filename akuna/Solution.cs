@@ -32,7 +32,7 @@ namespace akuna
                             var orderID = inputAsArray[4];
                             var order = new Order(orderType, price, quantity, orderID);
 
-                            if (Validate(order))
+                            if (Validate(order) && FindOrder(order.OrderID) == null)
                             {
                                 result = Matching(command, order);
                             }
@@ -176,7 +176,19 @@ namespace akuna
             var results = new List<Order>();
 
             var quantityToFulfill = order.Quantity;
-            foreach (var source in sourceList.OrderByDescending(sourceOrder => sourceOrder.Price))
+
+            var sortedList = Enumerable.Empty<Order>();
+            switch (command)
+            {
+                case Buy:
+                    sortedList = sourceList.OrderBy(sourceOrder => sourceOrder.Price);
+                    break;
+                case Sell:
+                    sortedList = sourceList.OrderByDescending(sourceOrder => sourceOrder.Price);
+                    break;
+            }
+
+            foreach (var source in sortedList)
             {
                 var isPriceMatched = IsPriceMatched(source, order, command);
                 if (isPriceMatched)
