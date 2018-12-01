@@ -155,6 +155,7 @@ namespace akuna
                         matchedQuantity = order.Quantity;
                         resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
                         matchingOrder.Quantity -= matchedQuantity;
+                        order.Quantity -= matchedQuantity;
                         break;
                     }
                     order.Quantity -= matchedQuantity;
