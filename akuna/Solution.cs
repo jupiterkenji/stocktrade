@@ -20,27 +20,36 @@ namespace akuna
             return commander.Process(inputAsArray);
         }
 
-        void Remove(string orderID)
-        {
-            var foundOrder = BuyList.FirstOrDefault(buyOrder => buyOrder.OrderID == orderID);
-            if (foundOrder != null)
-            {
-                BuyList.Remove(foundOrder);
-            }
-
-            foundOrder = SellList.FirstOrDefault(sellOrder => sellOrder.OrderID == orderID);
-            if (foundOrder != null)
-            {
-                SellList.Remove(foundOrder);
-            }
-        }
-
         #region Implementation
 
         public List<Order> BuyList {get; private set;}
         public List<Order> SellList {get; private set;}
 
         Commander commander;
+
+        #region Helper
+
+        static class Helper
+        {
+            public static void Remove(string orderID, List<Order> buyList, List<Order> sellList)
+            {
+                var foundOrder = buyList.FirstOrDefault(buyOrder => buyOrder.OrderID == orderID);
+                if (foundOrder != null)
+                {
+                    buyList.Remove(foundOrder);
+                }
+                else
+                {
+                    foundOrder = sellList.FirstOrDefault(sellOrder => sellOrder.OrderID == orderID);
+                    if (foundOrder != null)
+                    {
+                        sellList.Remove(foundOrder);
+                    }
+                }
+            }
+        }
+
+        #endregion
 
         #region Matcher
 
@@ -165,24 +174,23 @@ namespace akuna
                     var resultList = new List<string>();
                     foreach (var matchingOrder in matchingOrders)
                     {
-                        var matchedQuantity = 0;
-                        var isAllQuantityFulfilled = order.Quantity >= matchingOrder.Quantity;
+                        var isAllQuantityMatched = order.Quantity >= matchingOrder.Quantity;
 
-                        if(isAllQuantityFulfilled)
+                        if(isAllQuantityMatched)
                         {
-                            matchedQuantity = matchingOrder.Quantity;
+                            var matchedQuantity = matchingOrder.Quantity;
                             resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
                             matchingList.Remove(matchingOrder);
+                            order.Quantity -= matchedQuantity;
                         }
                         else
                         {
-                            matchedQuantity = order.Quantity;
+                            var matchedQuantity = order.Quantity;
                             resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
                             matchingOrder.Quantity -= matchedQuantity;
                             order.Quantity -= matchedQuantity;
                             break;
                         }
-                        order.Quantity -= matchedQuantity;
                     }
                     result = string.Join("\r\n", resultList);
                 }
@@ -212,22 +220,21 @@ namespace akuna
                     var resultList = new List<string>();
                     foreach (var matchingOrder in matchingOrders)
                     {
-                        if(order.Quantity >= matchingOrder.Quantity)
+                        var isAllQuantityMatched = order.Quantity >= matchingOrder.Quantity;
+                        if(isAllQuantityMatched)
                         {
-                            order.Quantity -= matchingOrder.Quantity;
                             var matchedQuantity = matchingOrder.Quantity;
                             resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
                             matchingList.Remove(matchingOrder);
+                            order.Quantity -= matchedQuantity;
                         }
                         else
                         {
-                            // only partial matched
                             var matchedQuantity = order.Quantity;
-
-                            order.Quantity = 0 ;
-                            matchingOrder.Quantity -= matchedQuantity;
-
                             resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
+                            matchingOrder.Quantity -= matchedQuantity;
+                            order.Quantity -= matchedQuantity;
+                            break;
                         }
                     }
                     result = string.Join("\r\n", resultList);
@@ -285,22 +292,23 @@ namespace akuna
 
             public override string Process(string[] inputAsArray)
             {
-                var result = string.Empty;
-
-                var command = inputAsArray[0];
-                var orderType = inputAsArray[1];
-                var price = int.Parse(inputAsArray[2]);
-                var quantity = int.Parse(inputAsArray[3]);
-                var orderID = inputAsArray[4];
-                var order = new Order(orderType, price, quantity, orderID);
-
-                if (order.Validate())
+                if (inputAsArray.Length == 5)
                 {
-                    var matcherProvider = new MatcherProvider(solution, orderType);
-                    result = matcherProvider.Matching(command, order);
+                    var command = inputAsArray[0];
+                    var orderType = inputAsArray[1];
+                    var price = int.Parse(inputAsArray[2]);
+                    var quantity = int.Parse(inputAsArray[3]);
+                    var orderID = inputAsArray[4];
+                    var order = new Order(orderType, price, quantity, orderID);
+
+                    if (order.Validate())
+                    {
+                        var matcherProvider = new MatcherProvider(solution, orderType);
+                        return matcherProvider.Matching(command, order);
+                    }
                 }
 
-                return result;
+                return string.Empty;
             }
         }
 
@@ -333,7 +341,7 @@ namespace akuna
                 if (inputAsArray.Length == 2)
                 {
                     var orderID = inputAsArray[1];
-                    solution.Remove(orderID);
+                    Helper.Remove(orderID, solution.BuyList, solution.SellList);
                 }
 
                 return string.Empty;
@@ -348,32 +356,32 @@ namespace akuna
 
             public override string Process(string[] inputAsArray)
             {
-                var result = string.Empty;
-
                 if (inputAsArray.Length == 5)
                 {
                     var orderID = inputAsArray[1];
 
-                    var foundOrder = FindOrder(orderID);
-                    if (foundOrder != null)
+                    var existingOrder = FindOrder(orderID);
+                    if (existingOrder != null)
                     {
-                        solution.Remove(orderID);
+                        Helper.Remove(orderID, solution.BuyList, solution.SellList);
 
                         var newCommand = inputAsArray[2];
 
-                        var orderType = foundOrder.OrderType;
+                        var orderType = existingOrder.OrderType;
                         var price = int.Parse(inputAsArray[3]);
                         var quantity = int.Parse(inputAsArray[4]);
+
                         var order = new Order(orderType, price, quantity, orderID);
+
                         if (order.Validate())
                         {
                             var matcherProvider = new MatcherProvider(solution, orderType);
-                            result = matcherProvider.Matching(newCommand, order);
+                            return matcherProvider.Matching(newCommand, order);
                         }
                     }
                 }
                 
-                return result;
+                return string.Empty;
             }
 
             Order FindOrder(string orderID)
@@ -396,9 +404,9 @@ namespace akuna
 
             public override string Process(string[] inputAsArray)
             {
-                var printResult = new List<string>();
+                var result = new List<string>();
 
-                printResult.Add("SELL:");
+                result.Add("SELL:");
                 foreach (var sellOrder in solution.SellList.GroupBy(tempOrder => tempOrder.Price).OrderByDescending(order => order.Key))
                 {
                     var quantity = 0;
@@ -406,10 +414,10 @@ namespace akuna
                     {
                         quantity += tempOrder.Quantity;
                     }
-                    printResult.Add($"{sellOrder.Key} {quantity}");
+                    result.Add($"{sellOrder.Key} {quantity}");
                 }
 
-                printResult.Add("BUY:");
+                result.Add("BUY:");
                 foreach (var buyOrder in solution.BuyList.GroupBy(tempOrder => tempOrder.Price).OrderByDescending(order => order.Key))
                 {
                     var quantity = 0;
@@ -417,10 +425,10 @@ namespace akuna
                     {
                         quantity += tempOrder.Quantity;
                     }
-                    printResult.Add($"{buyOrder.Key} {quantity}");
+                    result.Add($"{buyOrder.Key} {quantity}");
                 }
 
-                return string.Join("\r\n", printResult);
+                return string.Join("\r\n", result);
             }
         }
 
