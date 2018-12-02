@@ -102,23 +102,61 @@ namespace akuna
                 return result;
             }
 
-            abstract protected string MatchingCore(List<Order> matchingList, List<Order> otherList, Order order, string command);
+            string MatchingCore(List<Order> matchingList, List<Order> list, Order order, string command)
+            {
+                var result = string.Empty;
+                var matchingOrders = FindMatchingOrders(matchingList, order, command);
 
-            protected IEnumerable<Order> FindMatchingOrders(IEnumerable<Order> sourceList, Order order, string command)
+                if (matchingOrders.Any())
+                {
+                    var resultList = new List<string>();
+                    foreach (var matchingOrder in matchingOrders)
+                    {
+                        var isAllQuantityMatched = order.Quantity >= matchingOrder.Quantity;
+                        if(isAllQuantityMatched)
+                        {
+                            var matchedQuantity = matchingOrder.Quantity;
+                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
+                            matchingList.Remove(matchingOrder);
+                            order.Quantity -= matchedQuantity;
+                        }
+                        else
+                        {
+                            var matchedQuantity = order.Quantity;
+                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
+                            matchingOrder.Quantity -= matchedQuantity;
+                            order.Quantity -= matchedQuantity;
+                            break;
+                        }
+                    }
+                    result = string.Join("\r\n", resultList);
+                }
+
+                if (ShouldAddNewOrderToList && order.Quantity > 0)
+                {
+                    list.Add(order);
+                }
+
+                return result;
+            }
+
+            protected abstract bool ShouldAddNewOrderToList {get;}
+
+            IEnumerable<Order> FindMatchingOrders(IEnumerable<Order> list, Order order, string command)
             {
                 var results = new List<Order>();
-                var quantityToFulfill = order.Quantity;
-                var sortedList = GetSortedList(sourceList, command);
+                var quantityToMatch = order.Quantity;
+                var sortedList = GetSortedList(list, command);
 
-                foreach (var source in sortedList)
+                foreach (var potentialMatch in sortedList)
                 {
-                    var isPriceMatched = IsPriceMatched(source, order, command);
+                    var isPriceMatched = IsPriceMatched(potentialMatch, order, command);
                     if (isPriceMatched)
                     {
-                        quantityToFulfill -= source.Quantity;
-                        results.Add(source);
+                        quantityToMatch -= potentialMatch.Quantity;
+                        results.Add(potentialMatch);
 
-                        if (quantityToFulfill < 1)
+                        if (quantityToMatch < 1)
                         {
                             break;
                         }
@@ -128,16 +166,16 @@ namespace akuna
                 return results;
             }
 
-             IEnumerable<Order> GetSortedList(IEnumerable<Order> sourceList, string command)
+             IEnumerable<Order> GetSortedList(IEnumerable<Order> list, string command)
              {
                 var sortedList = Enumerable.Empty<Order>();
                 switch (command)
                 {
                     case BuyCommand.BuyCode:
-                        sortedList = sourceList.OrderBy(sourceOrder => sourceOrder.Price);
+                        sortedList = list.OrderBy(order => order.Price);
                         break;
                     case SellCommand.SellCode:
-                        sortedList = sourceList.OrderByDescending(sourceOrder => sourceOrder.Price);
+                        sortedList = list.OrderByDescending(order => order.Price);
                         break;
                 }
 
@@ -164,44 +202,7 @@ namespace akuna
 
             public const string Code = "GFD";
 
-            protected override string MatchingCore(List<Order> matchingList, List<Order> otherList, Order order, string command)
-            {
-                var result = string.Empty;
-                var matchingOrders = FindMatchingOrders(matchingList, order, command);
-
-                if (matchingOrders.Any())
-                {
-                    var resultList = new List<string>();
-                    foreach (var matchingOrder in matchingOrders)
-                    {
-                        var isAllQuantityMatched = order.Quantity >= matchingOrder.Quantity;
-
-                        if(isAllQuantityMatched)
-                        {
-                            var matchedQuantity = matchingOrder.Quantity;
-                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
-                            matchingList.Remove(matchingOrder);
-                            order.Quantity -= matchedQuantity;
-                        }
-                        else
-                        {
-                            var matchedQuantity = order.Quantity;
-                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
-                            matchingOrder.Quantity -= matchedQuantity;
-                            order.Quantity -= matchedQuantity;
-                            break;
-                        }
-                    }
-                    result = string.Join("\r\n", resultList);
-                }
-
-                if (order.Quantity > 0)
-                {
-                    otherList.Add(order);
-                }
-
-                return result;
-            }
+            protected override bool ShouldAddNewOrderToList => true;
         }
 
         class IOCMatcher: MatcherBase
@@ -210,38 +211,7 @@ namespace akuna
 
             public const string Code = "IOC";
 
-            protected override string MatchingCore(List<Order> matchingList, List<Order> otherList, Order order, string command)
-            {
-                var result = string.Empty;
-                var matchingOrders = FindMatchingOrders(matchingList, order, command);
-
-                if (matchingOrders.Any())
-                {
-                    var resultList = new List<string>();
-                    foreach (var matchingOrder in matchingOrders)
-                    {
-                        var isAllQuantityMatched = order.Quantity >= matchingOrder.Quantity;
-                        if(isAllQuantityMatched)
-                        {
-                            var matchedQuantity = matchingOrder.Quantity;
-                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
-                            matchingList.Remove(matchingOrder);
-                            order.Quantity -= matchedQuantity;
-                        }
-                        else
-                        {
-                            var matchedQuantity = order.Quantity;
-                            resultList.Add($"TRADE {matchingOrder.OrderID} {matchingOrder.Price} {matchedQuantity} {order.OrderID} {order.Price} {matchedQuantity}");
-                            matchingOrder.Quantity -= matchedQuantity;
-                            order.Quantity -= matchedQuantity;
-                            break;
-                        }
-                    }
-                    result = string.Join("\r\n", resultList);
-                }
-
-                return result;
-            }
+            protected override bool ShouldAddNewOrderToList => false;
         }
 
         #endregion
@@ -299,6 +269,7 @@ namespace akuna
                     var price = int.Parse(inputAsArray[2]);
                     var quantity = int.Parse(inputAsArray[3]);
                     var orderID = inputAsArray[4];
+
                     var order = new Order(orderType, price, quantity, orderID);
 
                     if (order.Validate())
